@@ -1,0 +1,16 @@
+# Real-track placement: survey the infield centre and the home-straight bearing.
+# The drone takes off anywhere nearby, flies to the run-up start at transit_speed, then paces.
+[track]
+lane = 1
+altitude_m = 3.0
+anchor = "gps"
+centre_lat = 47.398100
+centre_lon = 8.546500
+bearing_deg = 0.0
+
+[pace]
+lap_time_s = 59.0
+laps = 3
+
+[control]
+transit_speed = 2.0

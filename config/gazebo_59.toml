@@ -1,0 +1,23 @@
+# Gazebo Harmonic, x500, world gazebo/worlds/track400.sdf (track drawn at this placement).
+[track]
+lane = 1
+altitude_m = 3.0
+anchor = "local"         # the drawn track: infield centre 20.0 m north, 36.8 m west of the spawn point
+centre_north = 20.0
+centre_east = -36.8
+bearing_deg = 0.0
+
+[pace]
+lap_time_s = 59.0
+laps = 3
+
+[control]
+mode = "ff"
+drag_per_s = 0.0         # set from: python -m trackpace.identify <calibration flight>.ulg
+transit_speed = 2.0
+
+[px4]
+# Gazebo's simulated GPS has no latency; PX4's default assumes 110 ms. Left at 110 the
+# EKF places the drone ~0.7 m ahead of where it is at 6.8 m/s, so it flies 0.6 m behind
+# the pace (measured: runs/gz59_gpsdelay). On real hardware set it to the receiver's latency.
+EKF2_GPS_DELAY = 0.0

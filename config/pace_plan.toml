@@ -1,0 +1,13 @@
+# A pace plan: different target per lap (progressive / negative split).
+# Each lap still takes exactly its target, including the speed change at its start.
+[track]
+lane = 1
+altitude_m = 3.0
+bearing_deg = 0.0
+
+[pace]
+laps_s = [72.0, 66.0, 62.0, 59.0, 56.0]
+ramp_accel = 0.4         # m/s^2 speed change at the start of a lap
+
+[control]
+mode = "ff"

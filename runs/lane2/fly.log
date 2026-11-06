@@ -1,0 +1,21 @@
+[02:18:05|Info ] MAVSDK version: v4.1.0 (mavsdk_impl.cpp:58)
+[02:18:05|Info ] New system on: 127.0.0.1:14580 (system ID: 1) (udp_connection.cpp:283)
+[02:18:05|Debug] Component Autopilot (component ID: 1) added. (system_impl.cpp:518)
+[02:18:06|Debug] Discovered component Autopilot (system ID: 1, component ID: 1) (system_impl.cpp:648)
+[02:18:06] autopilot connected
+[02:18:06] health ok, clock locked
+[02:18:06|Debug] MAVLink: info: Armed by external command	 (system_impl.cpp:390)
+[02:18:06] takeoff to 3.0 m
+[02:18:07|Debug] MAVLink: info: Using default takeoff altitude: 3.0 m	 (system_impl.cpp:390)
+[02:18:08|Debug] MAVLink: info: Takeoff detected	 (system_impl.cpp:390)
+[02:18:18] offboard active
+[02:18:18] go in 4.0 s; laps [59.0, 59.0, 59.0]; line at AP t=35.703 s
+[02:18:36] lap 1 (59.00 s)
+[02:19:35] lap 2 (59.00 s)
+[02:20:35] lap 3 (59.00 s)
+[02:21:46|Debug] MAVLink: info: Landing at current position	 (system_impl.cpp:390)
+[02:21:46] landing
+[02:21:58|Debug] MAVLink: info: Landing detected	 (system_impl.cpp:390)
+[02:22:00|Debug] MAVLink: info: Disarmed by landing	 (system_impl.cpp:390)
+[02:22:01] wrote runs/lane2/run.json and setpoints.csv (10433 setpoints, 3 late ticks)
+[02:22:01] copied 07_18_00.ulg -> runs/lane2/flight.ulg

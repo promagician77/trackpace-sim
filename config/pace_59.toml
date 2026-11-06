@@ -1,0 +1,23 @@
+# Five laps of 59.0 s in lane 1, flown directly above the lane-1 measurement line.
+[connection]
+url = "udpin://0.0.0.0:14540"        # PX4 SITL onboard MAVLink port
+
+[track]
+lane = 1                 # pace is defined on this lane's measurement line (lane 1: 0.30 m outside the kerb)
+offset_m = 0.0           # fly this far outside that line; + outward. The pace stays the runner's.
+altitude_m = 3.0         # above take-off
+bearing_deg = 0.0        # compass bearing of the home straight in the running direction
+anchor = "takeoff"       # "takeoff": the run-up starts where the drone took off
+                         # "gps": set centre_lat / centre_lon (infield centre) instead
+
+[pace]
+lap_time_s = 59.0
+laps = 5
+runup_accel = 0.5        # m/s^2, reaches pace before the line (46 m at 59 s pace)
+stop_decel = 1.0
+
+[control]
+mode = "ff"              # ff = position + velocity + acceleration feed-forward
+rate_hz = 50
+hold_s = 4.0
+drag_per_s = 0.99         # identified from a calibration flight: python -m trackpace.identify flight.ulg

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Track Pacing Simulation</title>
+<link rel="stylesheet" href="../site/app.css">
+<style>
+@page{size:Letter;margin:0}
+html,body{background:#fff}
+body{width:8.5in;margin:0;font-size:10.5pt;line-height:1.42}
+.pg{width:8.5in;height:11in;padding:.42in .5in .4in;position:relative;overflow:hidden;page-break-after:always;background:var(--paper)}
+.pg:last-child{page-break-after:auto}
+.band{background:var(--ink);color:#F1EEE6;margin:-.42in -.5in 16px;padding:.34in .5in 18px;position:relative}
+.band::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:repeating-linear-gradient(90deg,var(--tartan) 0 40px,#fff 40px 42px)}
+.band h1{font-size:28pt;margin:4px 0 6px}
+.band p{margin:0;color:#D9D4C9;font-size:10.5pt;max-width:6.6in}
+.kick{font:600 8.5pt var(--cond);letter-spacing:.14em;text-transform:uppercase;color:#C9C3B6}
+.cols{display:grid;grid-template-columns:4.35in 1fr;gap:16px}
+.fig{background:#E7E2D6;border:1px solid var(--rule);border-radius:5px;overflow:hidden}
+.fig canvas{display:block;width:100%}
+.cap{font-size:8.5pt;color:var(--muted);margin-top:4px;line-height:1.35}
+.kpis{display:grid;grid-template-columns:1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:5px;overflow:hidden}
+.kpi{background:var(--card);padding:8px 11px}
+.kpi b{display:block;font:700 17pt/1.05 var(--mono);letter-spacing:-.02em}
+.kpi>span{display:block;font-size:8.6pt;color:var(--ink2);line-height:1.3;margin-top:2px}
+h2{font-size:15pt;margin:14px 0 6px}
+h3{font-size:11.5pt;margin:0 0 4px}
+table.data{font-size:8.6pt}
+table.data th{font-size:7.8pt;padding:3px 6px}
+table.data td{padding:2.5px 6px}
+.chart .ax text{font-size:9px}
+.mini{background:var(--card);border:1px solid var(--rule);border-radius:5px;padding:9px 11px}
+.fnd{display:grid;grid-template-columns:24px 1fr;gap:8px;margin-bottom:9px}
+.fnd .no{font:700 18pt/1 var(--cond);color:var(--tartan)}
+.fnd p{margin:0;font-size:9.2pt}
+.deliv{display:grid;grid-template-columns:1fr 1fr;gap:3px 18px;font-size:9pt;margin:0;padding:0;list-style:none}
+.deliv li{padding-left:14px;position:relative}
+.deliv li::before{content:"";position:absolute;left:0;top:.55em;width:7px;height:7px;background:var(--tartan);border-radius:1px}
+.foot{position:absolute;left:.5in;right:.5in;bottom:.26in;font-size:7.8pt;color:var(--muted);display:flex;justify-content:space-between;border-top:1px solid var(--rule);padding-top:5px}
+.small{font-size:8.6pt;color:var(--ink2)}
+.how{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:5px;overflow:hidden}
+.how>div{background:var(--card);padding:9px 11px}
+.how b{font:700 11pt var(--cond);color:var(--tartan);letter-spacing:.03em}
+.how p{margin:3px 0 0;font-size:8.5pt;line-height:1.35;color:var(--ink2)}
+</style>
+</head>
+<body data-print="1">
+<section class="pg">
+  <div class="band">
+    <div class="kick">PX4 v1.17 SITL · Gazebo Harmonic · MAVSDK · 400 m standard track</div>
+    <h1>A simulated drone that paces a 400 m lap to the programmed split</h1>
+    <p>The track is built to the World Athletics marking plan, flown under PX4 offboard control, and timed on the autopilot's clock. Every figure is read from the flight's PX4 log: the simulator's true position, scored against a virtual runner holding the target pace.</p>
+  </div>
+  <div class="cols">
+    <div>
+      <div class="fig"><canvas id="pf-track" width="1300" height="760"></canvas></div>
+      <div class="cap" id="pf-track-cap"></div>
+    </div>
+    <div class="kpis" id="pf-kpis"></div>
+  </div>
+  <h2 style="margin-top:10px">Split sheet</h2>
+  <div class="cols" style="grid-template-columns:3.7in 1fr">
+    <div class="mini"><table class="data" id="pf-splits"><thead><tr><th>Run</th><th>Lap</th><th class="n">Target</th><th class="n">Flown</th><th class="n">Lap Δ</th><th class="n">Line vs clock</th></tr></thead><tbody></tbody></table></div>
+    <div class="mini"><h3>Gap to the virtual runner, 3 × 59.0 s (Gazebo x500)</h3><div id="pf-gap"></div><div class="cap" id="pf-gap-cap"></div></div>
+  </div>
+  <h2 style="margin-top:12px">How the pacer works</h2>
+  <div class="how">
+    <div><b>1 · Track</b><p>World Athletics geometry: 36.50 m kerb, 84.39 m straights, lanes 1–8; lane 1 measured 0.30 m out (400.00 m). Placed by take-off point, offset or GPS.</p></div>
+    <div><b>2 · Schedule</b><p>A virtual runner's s(t), v(t), a(t): run-up to pace before the line, per-lap targets, pace changes that still land every lap on time.</p></div>
+    <div><b>3 · Setpoints</b><p>50 Hz on PX4's clock: position, tangent velocity, turn + drag acceleration, nose on the tangent, via MAVSDK offboard.</p></div>
+    <div><b>4 · Scoring</b><p>From the ULog: line crossings at 50 Hz, gap to the runner, off-line on straights, bends and joins, height, lap-to-lap spread.</p></div>
+  </div>
+  <div class="foot"><span>Track pacing simulation · review copy</span><span>1 / 2</span></div>
+</section>
+
+<section class="pg">
+  <h2 style="margin-top:0">What the logs showed <span style="font:500 9pt var(--sans);color:var(--muted)">(findings 1–3, 5 on PX4 SIH; 4 on Gazebo)</span></h2>
+  <div class="cols" style="grid-template-columns:1fr 3.3in">
+    <div>
+      <div class="fnd"><div class="no">1</div><p><b>Position-only setpoints look right and run late.</b> Laps came in within <span data-n="pos-lap-max"></span> ms of 59 s, yet the drone crossed the line <b><span data-n="pos-late"></span> s late</b> every lap, <span data-n="pos-gap"></span> m behind the runner. PX4's position loop makes the drone trail by speed ÷ MPC_XY_P (6.78 / 0.95 ≈ 7.1 m). The pacer sends position, velocity and acceleration together at 50 Hz.</p></div>
+      <div class="fnd"><div class="no">2</div><p><b>A waypoint mission can't hold pace through bends.</b> 71 fly-through waypoints at 6.78 m/s with PX4 defaults gave laps of <b><span data-n="ms-laps"></span></b> against 59 s. Bends averaged <span data-n="ms-spd-bend"></span> m/s. Missions have no time target, so pacing needs the setpoint stream.</p></div>
+      <div class="fnd"><div class="no">3</div><p><b>Drag goes in the feed-forward, measured from a log.</b> Without it the drone ran <span data-n="nd-wide"></span> m wide on bends and lost up to <span data-n="nd-lap-max"></span> ms a lap. A least-squares fit on any flight log gives the coefficient: 1.008 from the SIH estimate (true 1.00)<span data-if="gz_cal">, and <span data-n="cal-drag"></span> for the Gazebo x500 from one calibration lap</span>.</p></div>
+      <div class="fnd" data-if="gz59_gpsdelay"><div class="no">4</div><p><b>A GPS-delay mismatch hides inside perfect laps.</b> In the first Gazebo run every lap was within <span data-n="gzd-lap-max"></span> ms, yet every crossing was <span data-n="gzd-cross-mean"></span> ms late. PX4's default EKF2_GPS_DELAY (110 ms) against Gazebo's zero-latency GPS put the estimate <span data-n="gzd-ekf"></span> m ahead of the drone. Matched to 0, the mean crossing became <span data-n="gz-cross-mean"></span> ms. On hardware it must match the receiver.</p></div>
+      <div class="fnd"><div class="no">5</div><p><b>Time comes from the autopilot.</b> Setpoints are computed for PX4's own clock; worst gap <span data-n="ff-gapmax"></span> ms against the 1000 ms offboard-loss failsafe; offboard never dropped.</p></div>
+    </div>
+    <div>
+      <div class="mini"><h3>Worst line crossing vs pace clock</h3><div id="pf-bars"></div></div>
+      <div class="mini" style="margin-top:10px"><h3>Speed around the lap: pacer vs mission</h3><div id="pf-mission"></div><div class="legend" style="font-size:8.5pt;margin:2px 0 0"><span><i style="background:#2E63A8"></i>offboard pacer</span><span><i style="background:#8A55B5"></i>waypoint mission</span></div></div>
+    </div>
+  </div>
+
+  <h2>Phase 1, and what's already working beyond it</h2>
+  <div class="cols" style="grid-template-columns:1fr 1fr">
+    <div class="mini"><h3>Phase 1 scope</h3><ul class="deliv" style="grid-template-columns:1fr">
+      <li>PX4 SITL with Gazebo Harmonic (x500) and PX4's built-in SIH quadcopter</li>
+      <li>Gazebo world with a standard 400 m track, 8 lanes, World Athletics dimensions</li>
+      <li>Oval flight path: two 84.39 m straights, two 36.80 m-radius bends, continuous</li>
+      <li>Repeatable laps: <span data-n="gz-spread"></span> m mean lap-to-lap spread in Gazebo</li>
+      <li>Source, config files, setup steps for Ubuntu 22.04 / 24.04, 51 tests</li></ul></div>
+    <div class="mini"><h3>Already prototyped for later phases</h3><ul class="deliv" style="grid-template-columns:1fr">
+      <li>Programmable lap times, per lap: 72-66-62-59-56 s flown within ±<span data-n="plan-lap-max"></span> ms</li>
+      <li>Constant pace through bends; flying beside a runner with corrected bend speed</li>
+      <li>Timing and repeatability report from every flight log</li>
+      <li>Pace planner: enter splits, check PX4 limits, export the config</li>
+      <li>Drag identification for a new airframe from one flight</li></ul></div>
+  </div>
+  <div class="mini" data-if="gz59" style="margin-top:10px"><h3>Same code in Gazebo Harmonic (x500, track400 world)</h3>
+    <p class="small" style="margin:0 0 6px">One lap with no drag term; drag identified from that lap's log (<b><span data-n="cal-drag"></span> s⁻¹</b>); then 3 paced laps using it, with EKF2_GPS_DELAY matched to the simulated GPS.</p>
+    <table class="data" id="pf-gz"><thead><tr><th>Run</th><th class="n">Drag term</th><th class="n">Laps</th><th class="n">Worst lap Δ</th><th class="n">Mean line vs clock</th><th class="n">Gap RMS</th><th class="n">Off-line RMS</th><th class="n">Height RMS</th></tr></thead><tbody></tbody></table></div>
+  <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:10px">
+    <p class="small" style="margin:0"><b>Measured:</b> real-time PX4 v1.17.0 SITL, default parameters (Gazebo: EKF2_GPS_DELAY 0), SIH quadcopter and Gazebo Harmonic 8.10 x500. Ground-truth positions and autopilot-clock times from each PX4 log.</p>
+    <p class="small" style="margin:0"><b>Not measured:</b> a real drone, wind, real GPS (non-RTK error is often 1–2 m), people near the drone. Simulator sensor noise is lighter than real hardware. Results are single runs of 1–5 laps.</p>
+  </div>
+  <div class="foot"><span>Interactive replay, planner and setup steps: see the review link</span><span>2 / 2</span></div>
+</section>
+<script src="../site/app.js"></script>
+<script src="print.js"></script>
+</body>
+</html>

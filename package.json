@@ -1,0 +1,10 @@
+{
+  "name": "trackpace-sim-review",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Static review site for the PX4 track-pacing simulation (site/). No build step.",
+  "scripts": {
+    "data": "python3 tools/export_site.py runs site/data",
+    "serve": "npx --yes serve site -l 4173"
+  }
+}

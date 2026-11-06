@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Track Pacing Simulation</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='8' width='26' height='16' rx='8' fill='none' stroke='%23B8432F' stroke-width='4'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div>
+      <div class="kicker">PX4 v1.17 SITL · Gazebo Harmonic · MAVSDK · 400 m standard track</div>
+      <h1>A simulated drone that paces a 400 m lap to the programmed split</h1>
+      <p class="lede">The track is built to the World Athletics marking plan, and the drone flies it under PX4 offboard control on the autopilot's clock. Every number on this page is read from the flight's own PX4 log (ULog). That log holds the simulator's true position, scored against a virtual runner holding the target pace.</p>
+    </div>
+    <div class="heads">
+      <div class="head"><b>±<span data-n="gz-lap-max">—</span> ms</b><span>worst of 3 laps at 59.0 s, Gazebo Harmonic, x500</span></div>
+      <div class="head"><b>±<span data-n="gz-cross-max">—</span> ms</b><span>worst start/finish-line crossing against the pace clock</span></div>
+      <div class="head"><b><span data-n="gz-gap-rms">—</span> m</b><span>RMS gap to the virtual runner; <span data-n="gz-xt-rms">—</span> m RMS off the lane line</span></div>
+      <div class="head"><b>±<span data-n="ff-lap-max">—</span> ms</b><span>worst of <span data-n="ff-laps">5</span> laps in PX4's SIH simulator, same code</span></div>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="wrap" role="tablist">
+    <button data-tab="replay"><span class="n">01</span>Replay</button>
+    <button data-tab="timing"><span class="n">02</span>Lap timing</button>
+    <button data-tab="path"><span class="n">03</span>Path &amp; repeatability</button>
+    <button data-tab="findings"><span class="n">04</span>What the logs showed</button>
+    <button data-tab="planner"><span class="n">05</span>Pace planner</button>
+    <button data-tab="run"><span class="n">06</span>Run it</button>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- 01 REPLAY -->
+<section class="tab" id="replay">
+  <h2>Flight replay</h2>
+  <p class="sub">Each run is replayed from its PX4 log, showing the simulator's true drone position. The yellow dot is the virtual runner on the lane-1 measurement line (dashed), exactly on the programmed pace. Use <b>follow</b> to zoom in on the drone and runner.</p>
+  <div class="runs" id="rp-runs"></div>
+  <div class="replay">
+    <div>
+      <div class="stage">
+        <canvas id="rp-canvas" aria-label="Top-down replay of the flight over the 400 m track"></canvas>
+        <div class="legend-float"><span><span class="sw" style="background:#2E63A8;border:1.5px solid #111"></span>drone</span><span><span class="sw" style="background:#F2C230;border:1.5px solid #111"></span>virtual runner at target pace</span><span><span class="sw" style="background:transparent;border:1.5px dashed #C9B970;border-radius:0;height:0;width:16px"></span>lane-1 line</span></div>
+      </div>
+      <div class="ctrl">
+        <button id="rp-play">▶ play</button>
+        <span id="rp-speeds"><button data-s="1">×1</button> <button data-s="4" class="on">×4</button> <button data-s="10">×10</button> <button data-s="30">×30</button></span>
+        <input type="range" id="rp-scrub" min="0" max="100" value="0" aria-label="Scrub through the flight">
+        <span class="t" id="rp-time">0:00.0</span>
+        <button id="rp-follow">follow (34 m view)</button>
+      </div>
+      <p class="note" id="rp-note"></p>
+    </div>
+    <div class="panel">
+      <div class="clock"><div class="lbl">Race clock</div><div class="big" id="ro-clock">0:00.0</div><div class="row"><span id="ro-lap">run-up</span><span id="ro-target"></span></div></div>
+      <div class="readouts">
+        <div class="ro"><div class="lbl">Gap to runner</div><div class="v"><span id="ro-gap">—</span> <span class="u">m</span></div><div class="u" id="ro-gap-s"></div></div>
+        <div class="ro"><div class="lbl">Off lane line</div><div class="v"><span id="ro-xt">—</span> <span class="u">m</span></div><div class="u">+ outside / − inside</div></div>
+        <div class="ro"><div class="lbl">Ground speed</div><div class="v"><span id="ro-spd">—</span> <span class="u">m/s</span></div></div>
+        <div class="ro"><div class="lbl">Height</div><div class="v"><span id="ro-alt">—</span> <span class="u">m</span></div></div>
+      </div>
+      <div class="card" style="padding:12px 14px">
+        <h3 style="font-size:16px">Splits</h3>
+        <table class="splits" id="rp-splits"><thead><tr><th>Lap</th><th>Target</th><th>Flown</th><th>Δ ms</th><th>Line Δ</th></tr></thead><tbody></tbody></table>
+        <p class="note" style="margin-top:6px">Line Δ: when the drone crossed the line, against the pace clock that started as it crossed the start.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 TIMING -->
+<section class="tab" id="timing">
+  <h2>Lap timing against the pace clock</h2>
+  <p class="sub">Each lap is timed where the drone's true path crosses the finish line, interpolated between 50 Hz log samples, on the autopilot clock the schedule was set on. "Gap" is how far the drone is from where a runner holding the target pace would be at that moment.</p>
+  <div class="runs" id="tm-runs"></div>
+  <div class="grid2" style="grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)">
+    <div class="card">
+      <h3>Split sheet</h3>
+      <table class="data" id="tm-table"><thead><tr><th></th><th class="n">Target s</th><th class="n">Flown s</th><th class="n">Lap Δ</th><th class="n">Line vs clock</th><th class="n">Gap RMS</th><th class="n">m/s</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <h3>Gap to the virtual runner, whole race</h3>
+      <div id="tm-gap"></div>
+      <p class="note" id="tm-gap-cap"></p>
+    </div>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <h3>Same 59 s laps, four ways to command PX4 (PX4 SIH)</h3>
+    <p class="sub" style="margin-bottom:6px">Worst start/finish-line crossing against the pace clock for the three offboard variants. Same airframe, same PX4 defaults, same scoring. The waypoint mission is in the table: it ran 30–40 s per lap slow.</p>
+    <div id="mt-bars"></div>
+    <table class="data" id="mt-table" style="margin-top:8px"><thead><tr><th>Method</th><th class="n">Laps</th><th class="n">Worst lap Δ</th><th class="n">Mean line vs clock</th><th class="n">Gap RMS</th><th class="n">Off-line RMS</th><th class="n">Bend: mean outside</th></tr></thead><tbody></tbody></table>
+  </div>
+</section>
+
+<!-- 03 PATH -->
+<section class="tab" id="path">
+  <h2>Path accuracy and lap-to-lap repeatability</h2>
+  <p class="sub">The drone's true position is projected onto the lane-1 measurement line: radially on the bends, square to the line on the straights. Each lap is plotted against distance into the lap, so the same piece of track lines up lap over lap.</p>
+  <div class="runs" id="pt-runs"></div>
+  <div class="tiles" id="pt-tiles"></div>
+  <div class="card">
+    <h3 id="pt-title">Distance off the lane-1 line, every lap</h3>
+    <div class="legend"><span><i style="background:#9C968A"></i>each lap</span><span><i style="background:#2E63A8"></i>mean of laps</span></div>
+    <div id="pt-xt"></div>
+    <p class="note" id="pt-note"></p>
+  </div>
+  <div class="card" style="margin-top:18px" data-if="lane2">
+    <h3>Flying beside the runner, not over them</h3>
+    <p class="sub" style="margin-bottom:6px">Pace is defined on the runner's line. When the drone flies 1.2 m outside it, its own path on the bends is 3.3% longer, so it must fly faster there to stay level with the runner. The planner does this; the log shows it held the runner's pace with <span data-n="l2-gap-rms">—</span> m RMS gap.</p>
+    <div class="legend"><span><i style="background:#2E63A8"></i>over the lane-1 line</span><span><i style="background:#C66C22"></i>1.2 m outside lane 1</span></div>
+    <div id="pt-spd"></div>
+  </div>
+</section>
+
+<!-- 04 FINDINGS -->
+<section class="tab" id="findings">
+  <h2>What the logs showed</h2>
+  <p class="sub">Five things that decide whether a pacing drone is right on the clock, found by flying and measuring, not assumed.</p>
+  <div class="card">
+    <div class="finding">
+      <div class="no">1</div>
+      <div><h3>Position-only setpoints: lap times look right, the drone is a second late</h3>
+        <p>Streaming only positions to PX4 gave laps within <span data-n="pos-lap-max">—</span> ms of 59 s. Yet the drone crossed the line <b><span data-n="pos-late">—</span> s late</b> every lap, <span data-n="pos-gap">—</span> m behind the runner it was meant to pace. PX4's position loop turns position error into velocity, so in steady flight the drone trails by speed ÷ gain.</p>
+        <span class="eq">lag ≈ v / MPC_XY_P = 6.78 / 0.95 ≈ 7.1 m (≈ 1.05 s)</span>
+        <p class="src">A lap-time readout alone would never show this. The fix is to send velocity and acceleration with every position, which this pacer does (pos + vel + acc, 50 Hz).</p></div>
+      <div><table class="data"><tbody>
+        <tr><td>Position only</td><td class="n" style="color:#B3261E"><span data-n="pos-late">—</span> s late</td></tr>
+        <tr><td>Pos + vel + acc + drag</td><td class="n">±<span data-n="ff-cross-max">—</span> ms</td></tr></tbody></table></div>
+    </div>
+    <div class="finding" data-if="mission59">
+      <div class="no">2</div>
+      <div><h3>A waypoint mission can't hold a pace through the bends</h3>
+        <p>The same oval as a PX4 mission (QGroundControl-style): 71 fly-through waypoints, every 7.2 m on the bends, mission speed 6.78 m/s, PX4 defaults. Laps came out at <b><span data-n="ms-laps">—</span></b> against 59 s. Bends averaged <span data-n="ms-spd-bend">—</span> m/s and straights <span data-n="ms-spd-str">—</span> m/s. Mission mode plans each waypoint's speed for the corner it turns, and it has no time target.</p>
+        <p class="src">Missions are fine for "fly the oval" (Phase 1 item 3). For programmable lap times, timing has to be in the setpoint stream, which is how this is built.</p></div>
+      <div><div id="fd-mission"></div><div class="legend"><span><i style="background:#2E63A8"></i>offboard pacer</span><span><i style="background:#8A55B5"></i>waypoint mission</span></div></div>
+    </div>
+    <div class="finding">
+      <div class="no">3</div>
+      <div><h3>Drag belongs in the feed-forward. Measure it from a log, don't guess it</h3>
+        <p>With velocity and acceleration but no drag term, the drone ran <span data-n="nd-wide">—</span> m wide on the bends and <span data-n="nd-behind">—</span> m behind the runner. PX4's velocity integrator has to find the tilt that cancels drag. As the velocity vector turns through each bend, the integrator lags it.</p>
+        <span class="eq">a_ff = a_path + c·v,   c identified by least squares from any flight log: a = f_thrust − c·v</span>
+        <p class="src">PX4's SIH quadcopter has linear drag 1.0 N/(m/s) on 1.0 kg, so c = 1.00. From the no-drag run, the identifier recovered <b>1.008</b> using only the EKF estimate (what a real flight log offers) and 1.000 from simulator truth. <span data-if="gz_cal">In Gazebo the same procedure gave <b><span data-n="cal-drag">—</span></b> for the x500 from its calibration lap, and that value flew the paced laps.</span></p></div>
+      <div><table class="data"><tbody>
+        <tr><td>No drag term</td><td class="n">worst lap ±<span data-n="nd-lap-max">—</span> ms</td></tr>
+        <tr><td>Identified drag</td><td class="n">worst lap ±<span data-n="ff-lap-max">—</span> ms</td></tr></tbody></table></div>
+    </div>
+    <div class="finding" data-if="gz59_gpsdelay">
+      <div class="no">4</div>
+      <div><h3>A GPS-delay mismatch hides inside perfect lap times</h3>
+        <p>The first Gazebo run had laps within <span data-n="gzd-lap-max">—</span> ms of 59 s, yet every line crossing was <b><span data-n="gzd-cross-mean">—</span> ms late</b>. The cause was in the estimator: PX4's default <code>EKF2_GPS_DELAY</code> is 110 ms, Gazebo's simulated GPS has none, and the EKF placed the drone <span data-n="gzd-ekf">—</span> m (<span data-n="gzd-ekf-ms">—</span> ms) ahead of where it really was. The controller flew that estimate onto the pace, so the drone itself trailed.</p>
+        <p class="src">Set to 0 for Gazebo (in <code>config/gazebo_59.toml</code>), the estimate-to-truth offset fell to <span data-n="gz-ekf-ms">—</span> ms and the worst crossing to ±<span data-n="gz-cross-max">—</span> ms. On a real drone the same setting has to match the receiver's actual latency; a wrong value shows up only as a constant offset to the pace clock.</p></div>
+      <div><table class="data"><tbody>
+        <tr><td>EKF2_GPS_DELAY 110 ms</td><td class="n" style="color:#B3261E">+<span data-n="gzd-cross-mean">—</span> ms</td></tr>
+        <tr><td>EKF2_GPS_DELAY 0 ms</td><td class="n"><span data-n="gz-cross-mean">—</span> ms</td></tr>
+        <tr><td colspan="2" class="note" style="border:0">mean line crossing vs pace clock, Gazebo x500, 3 laps each</td></tr></tbody></table></div>
+    </div>
+    <div class="finding">
+      <div class="no">5</div>
+      <div><h3>Time comes from the autopilot, not the script</h3>
+        <p>The setpoint for "now" is computed from PX4's own clock, read from ODOMETRY timestamps through a sliding-minimum offset filter. A late tick from the companion script sends the correct position for the real time; it never replays a stale queue. Setpoints went out every <span data-n="ff-stream">—</span> ms on average, with a worst gap of <span data-n="ff-gapmax">—</span> ms, against PX4's 1000 ms offboard-loss failsafe (COM_OF_LOSS_T). Offboard mode never dropped in any run.</p>
+        <p class="src">Height: SIH's baro-based height wandered <span data-n="ff-alt-rms">—</span> m RMS from truth at a 3 m target. For real flights near athletes, a downward rangefinder or RTK GPS height is the obvious next step.</p></div>
+      <div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 PLANNER -->
+<section class="tab" id="planner">
+  <h2>Pace planner</h2>
+  <p class="sub">A first cut of the "simple interface for target lap times". Enter splits and it builds the same schedule the pacer flies, using the same maths as <code>trackpace/schedule.py</code>. It checks the plan against PX4's speed and tilt limits and writes the config file.</p>
+  <div class="planner">
+    <div class="card">
+      <div class="field"><label for="pl-laps">Lap times (s)</label><textarea id="pl-laps">59, 59, 59, 59, 59</textarea>
+        <div class="presets" id="pl-presets"><button data-v="59, 59, 59, 59, 59">5 × 59</button><button data-v="72, 66, 62, 59, 56">negative split</button><button data-v="65, 65, 65, 65, 65, 65, 65, 65">8 × 65</button><button data-v="52, 54, 54, 56">800 m pace</button><button data-v="75, 50">surge</button></div></div>
+      <div class="row2"><div class="field"><label for="pl-lane">Pace lane</label><input id="pl-lane" type="number" min="1" max="8" value="1"></div><div class="field"><label for="pl-off">Fly outside by (m)</label><input id="pl-off" type="number" step="0.1" value="0"></div></div>
+      <div class="row2"><div class="field"><label for="pl-ramp">Pace change (m/s²)</label><input id="pl-ramp" type="number" step="0.05" value="0.4"></div><div class="field"><label for="pl-drag">Drag c (1/s)</label><input id="pl-drag" type="number" step="0.01" value="0.99"><div class="hint">SIH 0.99; x500 / real airframes much lower</div></div></div>
+      <div class="row2"><div class="field"><label for="pl-vmax">MPC_XY_VEL_MAX</label><input id="pl-vmax" type="number" step="0.5" value="12"></div><div class="field"><label for="pl-tilt">MPC_TILTMAX_AIR (°)</label><input id="pl-tilt" type="number" value="45"></div></div>
+    </div>
+    <div>
+      <div class="card"><h3>Pace profile <span class="pill" id="pl-total"></span></h3><div id="pl-chart"></div><div id="pl-flags" style="margin-top:8px"></div></div>
+      <div class="grid2" style="margin-top:18px">
+        <div class="card"><h3>Per lap</h3><table class="data" id="pl-table"><thead><tr><th>Lap</th><th class="n">Target s</th><th class="n">Avg m/s</th><th class="n">Plateau</th><th class="n">Ramp</th><th class="n">Drone m/s</th><th class="n">Bend tilt</th></tr></thead><tbody></tbody></table>
+          <p class="note">A pace change is a constant-acceleration ramp at the start of the lap. The plateau is solved so the lap still takes exactly its target.</p></div>
+        <div class="card"><h3>Config <button class="copy" id="pl-copy">copy</button></h3><pre id="pl-toml"></pre><p class="note">Fly it: <code>python -m trackpace.fly plan.toml</code></p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 RUN IT -->
+<section class="tab" id="run">
+  <h2>Run it yourself</h2>
+  <p class="sub">Ubuntu 22.04 or 24.04 (or WSL2 on Windows). These steps are what produced this page.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="steps">
+        <div class="step"><div><h3>Build PX4 v1.17 SITL</h3><pre>git clone --recursive --branch v1.17.0 https://github.com/PX4/PX4-Autopilot.git
+cd PX4-Autopilot && bash Tools/setup/ubuntu.sh   <span class="c"># installs Gazebo Harmonic too</span>
+make px4_sitl_default</pre></div></div>
+        <div class="step"><div><h3>Install the pacer</h3><pre>cd trackpace-sim
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt     <span class="c"># mavsdk, pyulog, numpy, pytest</span>
+pytest -q                           <span class="c"># 51 tests: geometry, staggers, schedule</span></pre></div></div>
+        <div class="step"><div><h3>Start a simulator</h3><pre><span class="c"># Gazebo Harmonic, x500, the 400 m track world (add --gui to watch)</span>
+scripts/sitl_gz.sh ~/PX4-Autopilot
+<span class="c"># or PX4's built-in SIH quadcopter, no Gazebo needed</span>
+scripts/sitl_sih.sh ~/PX4-Autopilot</pre></div></div>
+        <div class="step"><div><h3>Fly, then score from the log</h3><pre>python -m trackpace.fly config/gazebo_59.toml --out runs/gz59 \
+    --ulog-dir ~/PX4-Autopilot/build/px4_sitl_default/rootfs/log
+python -m trackpace.analyze runs/gz59        <span class="c"># laps, gap, path, repeatability</span>
+python -m trackpace.identify runs/gz59/flight.ulg   <span class="c"># drag for the config</span></pre></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>How it fits together</h3>
+        <svg class="arch" viewBox="0 0 640 380" role="img" aria-label="Architecture: config, pacer, MAVSDK, PX4, simulator, ULog, analysis">
+          <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#4A4F57"/></marker></defs>
+          <g font-family="Barlow, sans-serif" font-size="13" fill="#1C1F24">
+            <rect x="10" y="20" width="170" height="64" rx="5" fill="#FFFDF8" stroke="#DDD7CA"/><text x="22" y="44" font-weight="600">pace.toml</text><text x="22" y="64" fill="#4A4F57" font-size="12">lane, offset, laps_s, drag</text>
+            <rect x="10" y="110" width="170" height="150" rx="5" fill="#FFFDF8" stroke="#B8432F"/><text x="22" y="134" font-weight="600">trackpace.fly</text>
+            <text x="22" y="156" font-size="12" fill="#4A4F57">track.py — oval, s → x, y, κ</text><text x="22" y="176" font-size="12" fill="#4A4F57">schedule.py — s(t), v(t), a(t)</text><text x="22" y="196" font-size="12" fill="#4A4F57">setpoint = pos, vel, acc</text><text x="22" y="216" font-size="12" fill="#4A4F57">  + drag·v, yaw on tangent</text><text x="22" y="236" font-size="12" fill="#4A4F57">clock = autopilot time</text>
+            <rect x="240" y="150" width="140" height="70" rx="5" fill="#FFFDF8" stroke="#DDD7CA"/><text x="252" y="176" font-weight="600">MAVSDK</text><text x="252" y="196" font-size="12" fill="#4A4F57">MAVLink · UDP 14540</text>
+            <rect x="440" y="110" width="190" height="150" rx="5" fill="#1C1F24"/><text x="454" y="134" font-weight="600" fill="#fff">PX4 v1.17 SITL</text><text x="454" y="156" font-size="12" fill="#C9C3B6">offboard → mc_pos_control</text><text x="454" y="176" font-size="12" fill="#C9C3B6">EKF2 (GPS, baro, IMU)</text><text x="454" y="196" font-size="12" fill="#C9C3B6">attitude, rate, mixer</text><text x="454" y="236" font-size="12" fill="#F2C230">logger → flight.ulg</text>
+            <rect x="440" y="300" width="190" height="64" rx="5" fill="#FFFDF8" stroke="#DDD7CA"/><text x="454" y="324" font-weight="600">Gazebo x500  /  SIH</text><text x="454" y="344" font-size="12" fill="#4A4F57">physics, sensors, truth</text>
+            <rect x="10" y="300" width="370" height="64" rx="5" fill="#FFFDF8" stroke="#DDD7CA"/><text x="22" y="324" font-weight="600">trackpace.analyze · identify</text><text x="22" y="344" font-size="12" fill="#4A4F57">ULog truth → laps, gap, off-line, repeatability, drag</text>
+          </g>
+          <g stroke="#4A4F57" stroke-width="1.6" fill="none" marker-end="url(#ar)">
+            <path d="M95,84V106"/><path d="M180,185H236"/><path d="M380,185H436"/><path d="M535,260V296"/><path d="M520,300V264"/><path d="M440,230C400,250 400,300 384,320"/>
+          </g>
+          <g font-family="JetBrains Mono, monospace" font-size="11" fill="#7A7F87"><text x="190" y="176">50 Hz</text><text x="384" y="176">SET_POSITION_TARGET</text><text x="540" y="284">actuators</text></g>
+        </svg>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <h3>What's in the folder</h3>
+        <table class="data"><tbody>
+          <tr><td><code>trackpace/track.py</code></td><td>Standard track, lanes 1–8, measurement lines, placement in PX4's frame (take-off, local, or GPS)</td></tr>
+          <tr><td><code>trackpace/schedule.py</code></td><td>Run-up, per-lap targets, exact-time pace changes, stop</td></tr>
+          <tr><td><code>trackpace/fly.py</code></td><td>Offboard pacer: arm, take off, place track, stream, land, copy log</td></tr>
+          <tr><td><code>trackpace/mission.py</code></td><td>Waypoint-mission baseline on the same oval</td></tr>
+          <tr><td><code>trackpace/analyze.py</code></td><td>Scores a ULog: laps, line crossings, gap, off-line, repeatability</td></tr>
+          <tr><td><code>trackpace/identify.py</code></td><td>Drag coefficient from any flight log</td></tr>
+          <tr><td><code>gazebo/</code></td><td>track400 world generator (World Athletics dimensions, 8 lanes)</td></tr>
+          <tr><td><code>config/</code>, <code>bench/</code>, <code>tests/</code></td><td>Example configs, measured-run scripts, 51 tests</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap grid2">
+    <div><h3>Measured</h3><p>All flights ran in real time on PX4 v1.17.0 SITL with default PX4 parameters, except <code>EKF2_GPS_DELAY = 0</code> for the final Gazebo run (finding 4). The simulators were the built-in SIH quadcopter and Gazebo Harmonic 8.10 with the x500. Positions come from each simulator's ground truth in the PX4 log. Times come from the autopilot clock. Track geometry: 36.50 m kerb radius, 84.39 m straights, lane 1 measured 0.30 m outside the kerb. The tests check the World Athletics 400 m staggers to the centimetre.</p></div>
+    <div><h3>Not measured</h3><p>A real drone, wind, real GPS (non-RTK error is often 1–2 m, larger than the errors here), and people near the drone. The simulators' sensor noise is lighter than real hardware. The planner's tilt check uses a linear drag model. Figures are from single runs of 1–5 laps, not a statistical campaign.</p></div>
+  </div>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

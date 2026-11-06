@@ -1,0 +1,14 @@
+# Pace a lane-1 runner while flying 1.2 m outside them (over lane 2), so the drone is
+# beside the athlete, not over them. On the bends the drone covers 3.3% more ground
+# than the runner and flies that much faster to stay level.
+[track]
+lane = 1
+offset_m = 1.2
+altitude_m = 3.0
+
+[pace]
+lap_time_s = 59.0
+laps = 3
+
+[control]
+mode = "ff"

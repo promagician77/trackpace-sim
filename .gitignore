@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+runs/*/flight.ulg
+runs/*/px4.log
+*.pyc

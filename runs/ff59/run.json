@@ -1,0 +1,158 @@
+{
+ "mode": "ff",
+ "config": {
+  "connection": {
+   "url": "udpin://0.0.0.0:14540",
+   "timeout_s": 30.0
+  },
+  "track": {
+   "lane": 1,
+   "offset_m": 0.0,
+   "altitude_m": 3.0,
+   "bearing_deg": 0.0,
+   "anchor": "takeoff",
+   "centre_lat": null,
+   "centre_lon": null
+  },
+  "pace": {
+   "lap_time_s": 59.0,
+   "laps": 5,
+   "laps_s": [
+    59.0,
+    59.0,
+    59.0,
+    59.0,
+    59.0
+   ],
+   "runup_accel": 0.5,
+   "runup_max_m": 80.0,
+   "ramp_accel": 0.4,
+   "stop_decel": 1.0
+  },
+  "control": {
+   "mode": "ff",
+   "rate_hz": 50,
+   "hold_s": 4.0,
+   "tail_s": 4.0,
+   "transit_speed": 2.0,
+   "drag_per_s": 0.99
+  },
+  "px4": {}
+ },
+ "params": {
+  "MPC_XY_P": 0.95,
+  "MPC_XY_VEL_P_ACC": 1.8,
+  "MPC_XY_VEL_I_ACC": 0.4,
+  "MPC_XY_VEL_D_ACC": 0.2,
+  "MPC_Z_P": 1.0,
+  "MPC_XY_VEL_MAX": 12.0,
+  "MPC_XY_CRUISE": 5.0,
+  "MPC_ACC_HOR": 3.0,
+  "MPC_ACC_HOR_MAX": 5.0,
+  "MPC_JERK_AUTO": 4.0,
+  "MPC_TILTMAX_AIR": 45.0,
+  "MPC_XY_TRAJ_P": 0.5,
+  "NAV_ACC_RAD": 2.0,
+  "COM_OF_LOSS_T": 1.0
+ },
+ "plan": {
+  "laps_s": [
+   59.0,
+   59.0,
+   59.0,
+   59.0,
+   59.0
+  ],
+  "lap_length_m": 400.00121930420875,
+  "total_s": 295.0,
+  "runup_m": 45.96,
+  "runup_s": 13.56,
+  "max_speed_m_s": 6.78,
+  "segments": [
+   {
+    "kind": "runup",
+    "lap": 0,
+    "t0": -13.5594,
+    "dur": 13.5594,
+    "v0": 0.0,
+    "v1": 6.7797,
+    "a": 0.5
+   },
+   {
+    "kind": "pace",
+    "lap": 1,
+    "t0": 0.0,
+    "dur": 59.0,
+    "v0": 6.7797,
+    "v1": 6.7797,
+    "a": 0.0
+   },
+   {
+    "kind": "pace",
+    "lap": 2,
+    "t0": 59.0,
+    "dur": 59.0,
+    "v0": 6.7797,
+    "v1": 6.7797,
+    "a": 0.0
+   },
+   {
+    "kind": "pace",
+    "lap": 3,
+    "t0": 118.0,
+    "dur": 59.0,
+    "v0": 6.7797,
+    "v1": 6.7797,
+    "a": 0.0
+   },
+   {
+    "kind": "pace",
+    "lap": 4,
+    "t0": 177.0,
+    "dur": 59.0,
+    "v0": 6.7797,
+    "v1": 6.7797,
+    "a": 0.0
+   },
+   {
+    "kind": "pace",
+    "lap": 5,
+    "t0": 236.0,
+    "dur": 59.0,
+    "v0": 6.7797,
+    "v1": 6.7797,
+    "a": 0.0
+   },
+   {
+    "kind": "stop",
+    "lap": 0,
+    "t0": 295.0,
+    "dur": 6.7797,
+    "v0": 6.7797,
+    "v1": 0.0,
+    "a": -1.0
+   }
+  ]
+ },
+ "t0_ap_us": 34270415.455244586,
+ "track": {
+  "lane": 1,
+  "R": 36.8,
+  "L": 84.39,
+  "length": 400.00121930420875
+ },
+ "placement": {
+  "north0": 3.7779154396736843,
+  "east0": -37.17566840648651,
+  "bearing_deg": 0.0
+ },
+ "offset_m": 0.0,
+ "altitude_m": 3.0,
+ "drag_per_s": 0.99,
+ "rate_hz": 50,
+ "late_ticks": 6,
+ "ticks": 16474,
+ "finished_unix": 1793948600.5271568,
+ "ulog": "runs/ff59/flight.ulg",
+ "ulog_source": "06_57_21.ulg"
+}
